@@ -50,4 +50,4 @@ version | number | data version
 
 When version is incresed, old data will be deleted.
 
-##Thanks to Vašek!
+## Thanks to Vašek!
