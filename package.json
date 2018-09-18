@@ -1,13 +1,13 @@
 {
   "name": "persist-check-version-transform",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "main": "dist/index.js",
   "scripts": {
     "build": "babel lib --plugins=transform-runtime,transform-class-properties --presets babel-preset-es2015 --out-dir dist",
     "minify": "minify dist -d dist"
   },
   "dependencies": {
-    "crypto-js": "^3.1.9-1",
+    "aes256": "^1.0.4",
     "redux-persist": "^5.4.0"
   },
   "devDependencies": {

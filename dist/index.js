@@ -18,13 +18,9 @@ var _keys2 = _interopRequireDefault(_keys);
 
 var _reduxPersist = require('redux-persist');
 
-var _cryptoJs = require('crypto-js');
+var _aes = require('aes256');
 
-var _cryptoJs2 = _interopRequireDefault(_cryptoJs);
-
-var _seamlessImmutable = require('seamless-immutable');
-
-var _seamlessImmutable2 = _interopRequireDefault(_seamlessImmutable);
+var _aes2 = _interopRequireDefault(_aes);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -49,7 +45,7 @@ exports.default = function (reduxStore, persistWhitelist, r) {
     if (reduxStore[key].encrypt) {
       delete inboundState['mergeDeep'];
       return {
-        data: _cryptoJs2.default.AES.encrypt((0, _stringify2.default)(inboundState), r).toString(),
+        data: _aes2.default.encrypt(r, (0, _stringify2.default)(inboundState)),
         version: reduxStore[key].version
       };
     } else {
@@ -60,11 +56,11 @@ exports.default = function (reduxStore, persistWhitelist, r) {
     }
   }, function (outboundState, key) {
     if (reduxStore[key].version && (!outboundState.version || outboundState.version !== reduxStore[key].version)) {
-      return reduxStore[key].redux.INITIAL_STATE;
+      return reduxStore[key].redux.INITIAL_STATE.asMutable();
     } else if (reduxStore[key].encrypt && outboundState.data) {
-      var bytes = _cryptoJs2.default.AES.decrypt(outboundState.data, r);
-      return (0, _seamlessImmutable2.default)(JSON.parse(bytes.toString(_cryptoJs2.default.enc.Utf8)));
+      var bytes = _aes2.default.decrypt(r, outboundState.data);
+      return JSON.parse(bytes);
     }
-    return (0, _assign2.default)(reduxStore[key].redux.INITIAL_STATE, outboundState);
+    return (0, _assign2.default)(reduxStore[key].redux.INITIAL_STATE.asMutable(), outboundState);
   }, { whitelist: persistWhitelist });
 };
