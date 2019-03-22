@@ -1,34 +1,30 @@
-'use strict';
+"use strict";
+
+var _interopRequireDefault = require("@babel/runtime/helpers/interopRequireDefault");
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.stateReconcilerImmutable = stateReconcilerImmutable;
+exports.default = void 0;
 
-var _assign = require('babel-runtime/core-js/object/assign');
+var _defineProperty2 = _interopRequireDefault(require("@babel/runtime/helpers/defineProperty"));
 
-var _assign2 = _interopRequireDefault(_assign);
+var _typeof2 = _interopRequireDefault(require("@babel/runtime/helpers/typeof"));
 
-var _stringify = require('babel-runtime/core-js/json/stringify');
+var _objectSpread2 = _interopRequireDefault(require("@babel/runtime/helpers/objectSpread"));
 
-var _stringify2 = _interopRequireDefault(_stringify);
+var _reduxPersist = require("redux-persist");
 
-var _keys = require('babel-runtime/core-js/object/keys');
+var _seamlessImmutable = _interopRequireDefault(require("seamless-immutable"));
 
-var _keys2 = _interopRequireDefault(_keys);
+var _aes = _interopRequireDefault(require("aes256"));
 
-var _reduxPersist = require('redux-persist');
-
-var _aes = require('aes256');
-
-var _aes2 = _interopRequireDefault(_aes);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-exports.default = function (reduxStore, persistWhitelist, r) {
+var _default = function _default(reduxStore, persistWhitelist, r) {
   return (0, _reduxPersist.createTransform)(function (inboundState, key) {
     if (reduxStore[key].blacklist) {
       var inboundStateTemp = {};
-      (0, _keys2.default)(inboundState).map(function (param) {
+      Object.keys(inboundState).map(function (param) {
         if (!reduxStore[key].blacklist.includes(param)) {
           inboundStateTemp[param] = inboundState[param];
         }
@@ -45,22 +41,68 @@ exports.default = function (reduxStore, persistWhitelist, r) {
     if (reduxStore[key].encrypt) {
       delete inboundState['mergeDeep'];
       return {
-        data: _aes2.default.encrypt(r, (0, _stringify2.default)(inboundState)),
+        data: _aes.default.encrypt(r, JSON.stringify(inboundState)),
         version: reduxStore[key].version
       };
     } else {
       if (!inboundState.version) {
         inboundState.version = reduxStore[key].version;
       }
+
       return inboundState;
     }
   }, function (outboundState, key) {
     if (reduxStore[key].version && (!outboundState.version || outboundState.version !== reduxStore[key].version)) {
       return reduxStore[key].redux.INITIAL_STATE.asMutable();
     } else if (reduxStore[key].encrypt && outboundState.data) {
-      var bytes = _aes2.default.decrypt(r, outboundState.data);
-      return JSON.parse(bytes);
+      var bytes = _aes.default.decrypt(r, outboundState.data);
+
+      outboundState = JSON.parse(bytes);
     }
-    return (0, _assign2.default)(reduxStore[key].redux.INITIAL_STATE.asMutable(), outboundState);
-  }, { whitelist: persistWhitelist });
+
+    if (reduxStore[key].blacklist) {
+      Object.keys(outboundState).forEach(function (param) {
+        if (reduxStore[key].blacklist.includes(param)) {
+          delete outboundState[param];
+        }
+      });
+    }
+
+    return outboundState;
+  }, {
+    whitelist: persistWhitelist
+  });
 };
+
+exports.default = _default;
+
+function stateReconcilerImmutable(inboundState, originalState, reducedState, _ref) {
+  var debug = _ref.debug;
+  var newState = (0, _seamlessImmutable.default)((0, _objectSpread2.default)({}, reducedState)); // only rehydrate if inboundState exists and is an object
+
+  if (inboundState && (0, _typeof2.default)(inboundState) === 'object') {
+    Object.keys(inboundState).forEach(function (key) {
+      // ignore _persist data
+      if (key === '_persist') return; // if reducer modifies substate, skip auto rehydration
+
+      if (originalState[key] !== reducedState[key]) {
+        if (process.env.NODE_ENV !== 'production' && debug) console.log('redux-persist/stateReconciler: sub state for key `%s` modified, skipping.', key);
+        return;
+      }
+
+      if (reducedState[key] && typeof reducedState[key].asMutable !== 'undefined') {
+        // if object is plain enough shallow merge the new values (hence "Level2")
+        newState = newState.merge((0, _defineProperty2.default)({}, key, inboundState[key]), {
+          deep: true
+        });
+        return;
+      } // otherwise hard set
+
+
+      newState = newState.set(key, inboundState[key]);
+    });
+  }
+
+  if (process.env.NODE_ENV !== 'production' && debug && inboundState && (0, _typeof2.default)(inboundState) === 'object') console.log("redux-persist/stateReconciler: rehydrated keys '".concat(Object.keys(inboundState).join(', '), "'"));
+  return newState;
+}

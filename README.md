@@ -50,4 +50,9 @@ version | number | data version
 
 When version is incresed, old data will be deleted.
 
-## Thanks to Vašek!
+## State reconciler
+```
+import { stateReconcilerImmutable } from 'persist-check-version-transform'
+```
+
+## Thanks to V&T
