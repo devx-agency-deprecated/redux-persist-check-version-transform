@@ -1,11 +1,10 @@
 {
   "name": "persist-check-version-transform",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "main": "dist/index.js",
   "scripts": {
     "build": "babel lib --out-dir dist",
-    "minify": "minify dist -d dist",
-    "postinstall": "yarn audit"
+    "minify": "minify dist -d dist"
   },
   "repository": {
     "type": "git",
